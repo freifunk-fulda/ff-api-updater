@@ -1,1 +1,1 @@
-*/5 *   * * *   www-data    /usr/bin/php5 /opt/ff-api-update.php &>/dev/null
+*/5 *   * * *   www-data    /usr/bin/php5 /opt/ff-api-updater/ff-api-update.php &>/dev/null
