@@ -6,13 +6,13 @@
  * written to the freifunk.net API file.
  */
  
-$NODELIST = 'http://map.freifunk-fulda.de/nodes.json';
+$NODELIST = 'https://meshviewer.fulda.freifunk.net/data/nodes.json';
 $APIFILE = '/path/to/FreifunkFulda-api.json';
  
 $map_json = file_get_contents($NODELIST);
 $map_php = json_decode($map_json);
  
-$nodes = count($map_php->{'nodes'});
+$nodes = count((array)($map_php->{'nodes'}));
  
 foreach($map_php->{'nodes'} as $node) {
     if ($node->{'flags'}->{'gateway'} == true)
