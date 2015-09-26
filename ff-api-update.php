@@ -44,12 +44,45 @@ function validateJson($json) {
 require (__DIR__ . '/config.php');
 set_include_path(__DIR__ . '/validator/src' . PATH_SEPARATOR . get_include_path());
 
+# commandline options
+$arOptions = array();
+$arArgs = array();
+array_shift($argv);//script itself
+foreach ($argv as $arg) {
+    if ($arg{0} == '-') {
+        $arOptions[$arg] = true;
+    } else {
+        $arArgs[] = $arg;
+    }
+}
+if (isset($arOptions['--help']) || isset($arOptions['-h'])) {
+    echo <<<HLP
+Update and validate API
+Usage: php ff-api-updater
+   or: php ff-api-updater newapi.json 
+Options:
+   -h --help            Show this help
+HLP;
+    exit(1);
+}
+
+if (count($arArgs) == 1) {
+    $command_apifile   = $arArgs[0];
+} else if (count($arArgs) > 1){
+    echo "Too many arguments...";
+    exit(2);
+}
+
+
 # Download, verify and decode directory.json
 $list_json = file_get_contents($APILISTFILE, false, stream_context_create($arrContextOptions));
 $list_php = validateJson($list_json);
 
-# Select community API link from directory.json
-$apifile = $list_php->{$COMMUNITY};
+# Select community API link from directory.json or use command line argument
+if (isset($command_apifile))
+    $apifile = $command_apifile;
+else
+    $apifile = $list_php->{$COMMUNITY};
 
 # Download, verify and decode nodes list
 $map_json = file_get_contents($NODELIST, false, stream_context_create($arrContextOptions));
