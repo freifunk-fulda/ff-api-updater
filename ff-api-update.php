@@ -6,6 +6,23 @@
  * written to the freifunk.net API file.
  */
 
+# Autoloader funktion (needed for 3rd-party validator)
+function __autoload($className)
+{
+    $className = ltrim($className, '\\');
+    $fileName  = '';
+    $namespace = '';
+    if ($lastNsPos = strrpos($className, '\\')) {
+        $namespace = substr($className, 0, $lastNsPos);
+        $className = substr($className, $lastNsPos + 1);
+        $fileName  = str_replace('\\', DIRECTORY_SEPARATOR, $namespace) . DIRECTORY_SEPARATOR;
+    }
+    $fileName .= str_replace('_', DIRECTORY_SEPARATOR, $className) . '.php';
+    if (stream_resolve_include_path($fileName)) {
+        require_once $fileName;
+    }
+}
+
 # disable SSL verification to prevent errors
 $arrContextOptions=array(
     "ssl"=>array(
@@ -18,50 +35,65 @@ $arrContextOptions=array(
 function validateJson($json) {
 	$json_test = json_decode($json);
 	if (json_last_error() !== JSON_ERROR_NONE || $json_test === null) {
-	  die "Contains invalid json data";
+	  die;
 	}
+	return $json_test;
 }
 
 # include configs
 require (__DIR__ . '/config.php');
+set_include_path(__DIR__ . '/validator/src' . PATH_SEPARATOR . get_include_path());
 
 # Download, verify and decode directory.json
 $list_json = file_get_contents($APILISTFILE, false, stream_context_create($arrContextOptions));
-validateJson($list_json);
-$list_php = json_decode($list_json);
+$list_php = validateJson($list_json);
 
 # Select community API link from directory.json
 $apifile = $list_php->{$COMMUNITY};
 
 # Download, verify and decode nodes list
 $map_json = file_get_contents($NODELIST, false, stream_context_create($arrContextOptions));
-validateJson($map_json);
-$map_php = json_decode($map_json);
+$map_php = validateJson($map_json);
 
 # Count all nodes
-$nodes = count((array)($map_php->{'nodes'}));
-
-# Remove gateways and offline nodes
+$nodes = 0;
 foreach($map_php->{'nodes'} as $node) {
-    if ($node->{'flags'}->{'gateway'} == true)
-        $nodes = $nodes -1;
-    else if ($node->{'flags'}->{'online'} == false)
-        $nodes = $nodes -1;
+    if (!($node->{'flags'}->{'gateway'}) && ($node->{'flags'}->{'online'}))
+		$nodes++;
 }
 
 # Download, verify and decode API json file
 $api_json = file_get_contents ($apifile, false, stream_context_create($arrContextOptions));
-validateJson($map_json);
-$json_php = json_decode($api_json);
+$json_php = validateJson($api_json);
 
 # Update nodes number
 $json_php->{'state'}->{'nodes'} = $nodes;
 
+# Validate output data
+if (!isset($json_php->{'api'})) {
+	echo "No API version set. Impossible to validate.\n";
+	die;
+}
+$SCHEMALINK="https://github.com/freifunk/api.freifunk.net/raw/master/specs/" . $json_php->{'api'} . ".json";
+$schema_json = file_get_contents ($SCHEMALINK, false, stream_context_create($arrContextOptions));
+$schema_php = validateJson($schema_json);
+if (!isset($schema_php->{'schema'})) {
+	echo "No API schema detected. Impossible to validate.\n";
+	die;
+}
+
+$validator = new JsonSchema\Validator();
+$validator->check($json_php, $schema_php->{'schema'});
+if (!($validator->isValid())) {
+	echo "JSON does not validate. Violations:\n";
+        foreach ($validator->getErrors() as $error) {
+            echo sprintf("[%s] %s\n", $error['property'], $error['message']);
+        }
+	die;
+}
+
 # Generate human readable json
 $api_json = json_encode($json_php, JSON_PRETTY_PRINT);
-
-# Validate output data
-validateJson($api_json);
 
 # Write human readable json file
 $json_string = file_put_contents ($APIOUTPUTFILE, $api_json);
