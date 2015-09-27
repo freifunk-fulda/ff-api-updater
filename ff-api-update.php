@@ -23,14 +23,6 @@ function __autoload($className)
     }
 }
 
-# disable SSL verification to prevent errors
-$arrContextOptions=array(
-    "ssl"=>array(
-        "verify_peer"=>false,
-        "verify_peer_name"=>false,
-    ),
-);
-
 # json validation
 function validateJson($json) {
 	$json_test = json_decode($json);
@@ -75,7 +67,7 @@ if (count($arArgs) == 1) {
 
 
 # Download, verify and decode directory.json
-$list_json = file_get_contents($APILISTFILE, false, stream_context_create($arrContextOptions));
+$list_json = file_get_contents($APILISTFILE);
 $list_php = validateJson($list_json);
 
 # Select community API link from directory.json or use command line argument
@@ -85,7 +77,7 @@ else
     $apifile = $list_php->{$COMMUNITY};
 
 # Download, verify and decode nodes list
-$map_json = file_get_contents($NODELIST, false, stream_context_create($arrContextOptions));
+$map_json = file_get_contents($NODELIST);
 $map_php = validateJson($map_json);
 
 # Count all nodes
@@ -96,7 +88,7 @@ foreach($map_php->{'nodes'} as $node) {
 }
 
 # Download, verify and decode API json file
-$api_json = file_get_contents ($apifile, false, stream_context_create($arrContextOptions));
+$api_json = file_get_contents ($apifile);
 $json_php = validateJson($api_json);
 
 # Update nodes number
@@ -108,7 +100,7 @@ if (!isset($json_php->{'api'})) {
 	die;
 }
 $SCHEMALINK="https://github.com/freifunk/api.freifunk.net/raw/master/specs/" . $json_php->{'api'} . ".json";
-$schema_json = file_get_contents ($SCHEMALINK, false, stream_context_create($arrContextOptions));
+$schema_json = file_get_contents ($SCHEMALINK);
 $schema_php = validateJson($schema_json);
 if (!isset($schema_php->{'schema'})) {
 	echo "No API schema detected. Impossible to validate.\n";
