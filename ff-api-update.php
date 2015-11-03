@@ -94,6 +94,9 @@ $json_php = validateJson($api_json);
 # Update nodes number
 $json_php->{'state'}->{'nodes'} = $nodes;
 
+# Update timestamp
+$json_php->{'state'}->{'lastchange'} = date("c");
+
 # Validate output data
 if (!isset($json_php->{'api'})) {
 	echo "No API version set. Impossible to validate.\n";
